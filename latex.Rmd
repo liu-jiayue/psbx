@@ -1,0 +1,373 @@
+---
+title: "Tutoriel Latex sous R-Markdown"
+date: 16-11-2020
+author: Jiayue Liu
+output: pdf_document
+header-includes:
+   - \usepackage{bbm}
+   - \usepackage{psfrag}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction
+
+LaTex est un langage informatique permetttant de produire des documents scientifiques contenant des équations mathémathiques. Ce tutoriel sert à exposer les commandes de bases ainsi que les astuces pour écrire des équations sous R-Markdown. Pour une introduction plus générale sur LaTex dans d'autres contextes, notamment la création d'un document entier en LaTex, vous pouvez consulter la page xxx.
+
+L'usage de LaTex permet de structurer les équations de façon uniforme et lisible, comme par exemple celle-ci :
+
+$$
+f(x)= x + 1
+$$
+Ou encore celle-là, un peu plus compliquée :
+
+$$
+\bar{x}=\frac{1}{n} \sum_{i=1}^{n} x_{i}
+$$
+Nous allons découvrir la syntaxe qui permet d'écrire et assembler ces symboles mathémathiques dans la partie suivante.
+
+**Importer le package LaTex**
+
+LaTex fait partie des packages sous R qu'il faut introduire en tête d'un fichier .Rmd :
+
+```(r)
+---
+title: "Ceci est le titre d'un document"
+output: pdf_document
+header-includes:
+   - \usepackage{bbm}
+---
+```
+
+Sachez cependant que sur RStudio Cloud, ce package semblerait déjà importé par défaut. Dans ce cas-là, cette étape n'est plus nécessaire.
+
+# 1. Les bases
+
+## 1.1 Quelques notions de syntaxe
+
+* Environnement : un environnement LaTex est un espace de travail qui permet d'appeler les différents types de commandes, comme par exemple l'environnement `equation`. Nous pouvons ouvrir et fermer un environnement avec les commandes `\begin{}`et `\end{}`. Il est d'ailleurs possible de combiner plusieurs `environnement`.
+
+* Commande : une commande est une fonction interne à LaTex qui se trouve à l'intérieur d'un environnement.
+
+_N.B._ Que ce soit un environnement ou une commande, la syntaxe veut qu'on commence la saisie par un _backslash_ (`\`).
+
+* Mode de mise en forme : il existe trois modes d'écriture sous LaTex qui chacun détermine un style de mise en page dans le résultat de sortie.
+    - Text Mode : ne contient que du texte non-mathématique.
+    - Ordinary Math Mode : un mélage de texte et de contenu mathémathique dans une même ligne.
+    - Display Math Mode : est affiché seul le contenu mathémathique, séparément du texte.
+    
+La différencence entre Ordinary Math Mode et Display Math Mode est illustrée ci-dessous.
+
+## 1.2 Les différentes mises en forme du contenu mathémathique
+
+* Ordinary Math Mode : le contenu mathémathique commence par un signe dollar $ et se termine par un dollar (ou commence par ```\(``` et finit par ```\)```) comme celle-ci : 
+  ```
+  L’aire S d’un disque de rayon r est égale à : $S = \pi r^2$
+  ```
+  ce qui donne :
+  
+  L’aire S d’un disque de rayon r est égale à : $S = \pi r^2$
+
+* Display Math Mode : le contenu mathémathique est détaché du reste du texte ; cela commence par 2 signes dollar ou ```\[``` et se termine par 2 signes dollar ou ```\]``` comme celle-ci :
+
+  ```
+  L’aire S d’un disque de rayon r est égale à : \[S = \pi r^2\]
+  ```
+  ce qui donne :
+  
+  L’aire S d’un disque de rayon r est égale à : \[S = \pi r^2\]
+  
+A noter que, sans préciser aucun `environnement`, une formule dans Display Math Mode est par défaut centrée et tous ses composants s'affichent dans une même ligne.
+
+# 2. Symboles et caractères
+
+Pour une liste exhaustive des symboles sous LaTex, vous pouvez consulter ce document qui fait l'objest d'une mise à jour régulière : <http://tug.ctan.org/info/symbols/comprehensive/symbols-a4.pdf>
+
+_N.B._ Il est omis dans le texte suivant les symboles d'activation ```$``` ou ```$$```.
+
+## Les plus souvent utilisés
+* Mettre en exposant ```a^{bcd}``` : $a^{bcd}$
+* Mettre en indice ```a_{bcd}``` : $a_{bcd}$
+* Relations ```=```, ```\neq```($\neq$), ```<```, ```>```, ```\leq```($\leq$) et ```\geq```($\geq$)
+* Opérateurs binaires ```+```, ```-```, ```*``` et ```/```
+* Fraction ```\frac{a}{b}``` : $\frac{a}{b}$
+* Racine carrée ```\sqrt{abcd}``` : $\sqrt{abcd}$
+* Racine n-ième ```\sqrt[n]{abcd}``` : $\sqrt[n]{abcd}$
+* Les parenthèses et crochets ```()```, ```[]```, ```\{\}```, ```\langle\rangle``` (un peu comme dans « ```<...>``` »), ```|...|``` (valeur absolue) et ```\|...\|``` (norme)
+* ```'``` pour prime, ```''``` pour seconde, ```'''``` pour tierce
+
+#### Symboles divers
+* ```\forall``` : $\forall$
+* ```\exists``` : $\exists$
+* ```\infty``` : $\infty$
+* ```\partial``` : $\partial$
+
+#### Les dots
+* ```\cdots``` : eg. ```a + \cdots + b``` donne $a + \cdots + b$
+* ```\ldots``` : eg. ```a, ldots, b``` donne $a, \ldots, b$
+* ```\vdots``` : $\vdots$
+* ```\ddots``` : $\ddots$
+
+#### Les accents
+* ```\hat{a}, \check{a}, \acute{a}, \grave{a}``` : $\hat{a}, \check{a}, \acute{a}, \grave{a}$
+* ```\bar{x}, \vec{x}, \dot{x}, \ddot{x}``` : $\bar{x}, \vec{x}, \dot{x}, \ddot{x}$
+* ```\breve{a}, \tilde{a}, \mathring{a}``` : $\breve{a}, \tilde{a}, \mathring{a}$
+
+#### Lettres grecques
+
+Les lettres grecques retranscrites en lettre latine :
+
+>```
+\alpha \beta  \gamma   \delta \epsilon \varepsilon
+\zeta  \eta   \theta   \iota  \kappa   \lambda
+\mu    \nu    \xi      \pi    \varrho  \rho
+\sigma \tau   \upsilon \phi   \varphi  \chi
+\psi   \omega \Gamma   \Delta \Theta   \Lambda
+\Xi    \Pi    \Upsilon \Phi   \Psi     \Omega```
+
+>$\alpha \qquad  \beta \qquad  \gamma  \qquad  \delta \qquad \epsilon \qquad \varepsilon$
+
+>$\zeta \qquad  \eta \qquad   \theta  \qquad  \iota \qquad  \kappa  \qquad  \lambda$
+
+>$\mu  \qquad   \nu  \qquad   \xi   \qquad    \pi \qquad    \varrho \qquad  \rho$
+
+>$\sigma \qquad  \tau \qquad   \upsilon \qquad  \phi \qquad   \varphi \qquad  \chi$
+
+>$\psi  \qquad  \omega \qquad \Gamma \qquad  \Delta \qquad \Theta  \qquad \Lambda$
+
+>$\Xi  \qquad  \Pi  \qquad   \Upsilon \qquad  \Phi  \qquad  \Psi \qquad  \Omega$
+
+#### Opérateurs binaires
+* ```\pm \times \div \cdot``` : $\pm \times \div \cdot$
+* ```\circ \bullet \oplus \otimes``` : $\circ \bullet \oplus \otimes$
+* ```\cap \cup \vee \wedge```: $\cap \cup \vee \wedge$
+
+#### Grands opérateurs
+* ```\sum_{0}^{\infty}``` : \(\sum_{0}^{\infty}\)
+* ```\int_{0}^{\infty}``` : \(\int_{0}^{\infty}\)
+* ```\prod_{0}^{\infty}```: \(\prod_{0}^{\infty}\)
+* ```\bigcap_{0}^{\infty}``` : \(\bigcap_{0}^{\infty}\)
+* ```\bigcup_{0}^{\infty}``` : \(\bigcup_{0}^{\infty}\)
+
+#### Les relations
+* ```\propto \approx \sim \simeq``` : $\propto \approx \sim \simeq$
+* ```\subseteq \supseteq \in \equiv``` : $\subseteq \supseteq \in \equiv$
+* ```\rightarrow \Rightarrow \leftarrow \Leftarrow``` : $\rightarrow \Rightarrow \leftarrow \Leftarrow$
+* ```\leftrightarrow \Leftrightarrow \longleftrightarrow \Longleftrightarrow ``` : $\leftrightarrow \Leftrightarrow \longleftrightarrow \Longleftrightarrow$
+
+_N.B._ La négation d'une relation est démarquée par ```\not```, comme
+```\not \in ``` ce qui donne $\not \in$.
+
+#### Les délimiteurs
+* ```() [] \{\} \langle \rangle``` : $()[]\{\}\langle\rangle$
+* ```\uparrow \downarrow \updownarrow \Uparrow \Downarrow \Updownarrow``` : 
+$\uparrow\downarrow\updownarrow\Uparrow\Downarrow\Updownarrow$
+
+_N.B._ Pour ajuster la taille des délimiteurs, on peut utiliser ```\left```et ```\right``` avec la syntaxe suivante:
+
+```\left<delim1> <formule> \right<delim2>```
+
+Lorsqu'on a besoin d'un seul délimiteur, on utilise "." juste après ```\left```ou ```\right```. Exemple :
+
+```
+\[
+  |x| = \left\{
+          \begin{array}{ll}
+            +x & \qquad \mathrm{si}\quad x\geq 0 \\
+            -x & \qquad \mathrm{sinon} \\
+          \end{array}
+        \right.
+\]
+```
+
+ce qui donne le résultat :
+\[
+  |x| = \left\{
+          \begin{array}{ll}
+            +x & \qquad \mathrm{si}\quad x\geq 0 \\
+            -x & \qquad \mathrm{sinon} \\
+          \end{array}
+        \right.
+\]
+
+#### Les fonctions 
+    
+Les fonctions prédéfinies sont: ```\sin```, ```\cos```, ```\tan```, ```\arcsin```, ```\arccos```, ```\arctan```, ```\sinh```, ```\cosh```, ```\tanh```, ```\cot```, ```\log```, ```\ln```, ```\lim```, suivies de ```(x)```. Pour d'autres fonctions non définies, il faut importer le package ```amsmath```.
+
+
+#### Espacement
+
+* ```\,```, espace fine
+* ```\;```, espace moyenne
+* ```\:```, espace large
+* ```\ ```, espace normale (intermot)
+* ```\quad```, cadratin
+* ```\qquad```, double cadratin
+
+# 3. Environnements et commandes
+
+## 3.1 Quelques environnements de base
+
+### L'environnement `equation`
+
+L'environnement `equation` permet d'insérer une seule formule dans le texte. Ici on veut insérer une formule qui calcule l'aire d'un disque $S$ de rayon $r$ : 
+
+```
+\begin{equation}
+  S=\pi r^2
+\end{equation}
+```
+
+\begin{equation}
+  S=\pi r^2
+\end{equation}
+
+Notez bien que la formule est automatiquement numérotée, ce qui n'est pas le cas avec `\[` et `\]` ou `$$`. Pour désactiver la numérotation, on peut utiliser la version "étoilée" (eg. `equation*`).
+
+### L'environnement `split`
+
+Parfois on a envie de séparer une longue formule en plusieurs étapes pour que ce soit plus lisible. Pour ce faire, nous allons créer l'environnement `split` dans l'environnement `equation``. Exemple :
+
+```
+\begin{equation*}
+\begin{split}
+  y & = (a+b)^2 \\
+    & = a^2 + b^2 + 2ab \\
+    & \geq 0 \,.
+\end{split}
+\end{equation*}
+```
+
+\begin{equation*}
+\begin{split}
+  y & = (a+b)^2 \\
+    & = a^2 + b^2 + 2ab \\
+    & \geq 0 \,.
+\end{split}
+\end{equation*}
+
+_N.B._ L'usage de `&` et de `\\` permet d'indiquer l'alignement et les sauts de lignes.
+
+### L'environnement `gather`
+
+Si on veut associer plusieurs formules sous-ajacentes, on peut utiliser l'environnement `gather`. Exemple :
+
+```
+\begin{gather}
+  \sum_i{F_i} = \frac{d_v}{d_t} = 0 \\
+  F = M \* a                        \\
+  \sum{F_{A,B}} = \-\sum{F_{B,A}}
+\end{gather}
+```
+
+\begin{gather}
+  \sum_i{F_i} = \frac{d_v}{d_t} = 0 \\
+  F = M \* a                        \\
+  \sum{F_{A,B}} = \-\sum{F_{B,A}}
+\end{gather}
+
+### L'environnement `align`
+
+Tout comme `split`, cet environnement permet de séparer les équations en plusieurs étapes mais en s'assurant qu'elles soient alignées.
+
+```
+\begin{align}
+F(z) & = \sum^\infty_{n=0} f_n z^n \\
+& = z + \sum^\infty_{n=2}(f_{n-1}+f_{n-2}) z^n \\
+& = z + F(z)/z + F(z)/z^2 \\
+\nonumber
+& = z / (1 - z - z^2) \,.
+\end{align}
+```
+
+\begin{align}
+F(z) & = \sum^\infty_{n=0} f_n z^n \\
+& = z + \sum^\infty_{n=2}(f_{n-1}+f_{n-2}) z^n \\
+& = z + F(z)/z + F(z)/z^2 \\
+\nonumber
+& = z / (1 - z - z^2) \,.
+\end{align}
+
+_N.B._ La commande `\nonumber` met en pause la numéroation automatique.
+
+## 3.2 Quelques commandes de base
+
+### 3.2.1 Référencement
+
+Nous pouvons très bien donner un nom à des formules avec la commande `\label{}`. Cela permet de mieux référencer les formules quand elles sont nombreuses et dispersées dans un document, avec la commande `\ref{}`.
+
+```
+\begin{equation}
+  \label{aireS}
+  S=\pi r^2
+\end{equation}
+
+(...) plus loin dans le texte, on pourra donc citer la formule \ref{aireS}.
+La numérotation sera modifiée automatiquement si l'emplacement de la
+formule en question est changé.
+```
+
+\begin{equation}
+  \label{aireS}
+  S=\pi r^2
+\end{equation}
+
+(...) plus loin dans le texte, on pourra donc citer la formule \ref{aireS}.
+La numérotation sera modifiée automatiquement si l'emplacement de la
+formule en question est changé.
+
+# 4. Insertion et manipulation des graphiques
+
+Il existe sous LaTex des packagges ou extensions pour pouvoir travailler sur des éléments graphiques comme des images ou des dessins. Pour ce faire, il faut introduire le package `graphicx`.
+
+### 4.1 Insertion des images depuis le répertoire
+
+Pour commencer, on utilise la commande `includegraphics[options]{nom du fichier}`. Il est par ailleurs d'omettre l'extension du fichier (ici .jpg en l'occurence). Dans la partie `[options]`, on a la possibilité d'ajuster la taille de l'image par exemple.
+
+Cependant, la commande `includegraphics` ne s'accompagne d'aucune mise en page. Par conséquent, nous pouvons utiliser l'environnement `figure` qui assure une bonne représentation de l'image dans le texte.
+
+Ainsi, avec la commande suivante :
+```
+\begin{figure}
+  \centering \includegraphics[width=3cm]{biden.jpg}
+  \caption{Joe Biden, 46th Presidente-elect of the United States}
+  \label{img-exemple}
+\end{figure}
+```
+On obtient le résultat suivant :
+
+\begin{figure}
+  \centering \includegraphics[width=3cm]{biden.jpg}
+  \caption{Joe Biden, 46th Presidente-elect of the United States}
+  \label{img-exemple}
+\end{figure}
+
+On voit que la figure est automatiquement numérotée avec la commande `\caption`, comme dans l'exemple des équations montré plus haut.
+
+Il existe trois manières d’agir sur la taille d’un graphique.
+* scale=ratio, où ratio est un nombre positif ou négatif, permet
+de changer la taille globale de la figure ;
+* width=dimen permet d’imposer la largeur du graphique ;
+* height=dimen permet d’imposer la hauteur du graphique.
+
+Avec l'option `angle=ndegre` on peut réaliser également des rotations.
+
+```
+\begin{figure}
+  \centering \includegraphics[angle=180,scale=0.25]{biden.jpg}
+  \label{img-exemple-rotated}
+\end{figure}
+```
+
+ce qui donne :
+
+\begin{figure}
+  \centering \includegraphics[angle=180,scale=0.25]{biden.jpg}
+  \caption{Joe Biden, portrait renversé}
+  \label{img-exemple-rotated}
+\end{figure}
+
+
