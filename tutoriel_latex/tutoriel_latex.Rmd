@@ -1,0 +1,436 @@
+---
+title: Guide pratique de \LaTeX\ sous R Markdown
+date: "16 novembre 2020"
+author: Jiayue LIU
+header-includes:
+   - \usepackage{fancyhdr}
+   - \pagestyle{fancy}
+   - \fancyhead[L,R]{}
+   - \fancyhead[CO,CE]{Paris School of Business}
+   - \fancypagestyle{plain}{\pagestyle{fancy}}
+   
+   - \usepackage{titling}
+   - \pretitle{\begin{center}
+     \includegraphics[width=3in]{img-r.jpg}\LARGE\\}
+   - \posttitle{\end{center}}
+output:
+  pdf_document:
+    toc: true
+---
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+\pagebreak
+# Introduction
+
+\LaTeX\ est un langage informatique dérivé de \TeX\ qui permet de composer et produire des documents, souvent scientifiques, contenant des contenus mathématiques (notamment des équations) mis en style. Dans l'environnement R Markdown, on peut écrire directement des commandes \LaTeX\ avec le package `TinyTeX` qui est déjà installé par défaut.
+
+L'usage de \LaTeX\ produit des contenus mathématiques de façon uniforme et structurée, comme par exemple celle-ci :
+
+\[
+f(x)= x + 1
+\]
+Ou encore celle-là, un peu plus compliquée :
+
+\[
+\bar{x}=\frac{1}{n} \sum_{i=1}^{n} x_{i}
+\]
+
+**N.B.** Bien que \LaTeX\ est également très puissant pour la mise en page des documents ainsi produits, nous nous intéressons principalement à son usage dans un contexte mathématique. Ainsi, la mise en page du présent document a été réalisée uniquement avec la syntaxe Markdown.
+
+# 1. Les bases
+
+## 1.1 Les composants de la syntaxe \LaTeX
+
+Découvrons d'abord quelques notions de base dans \LaTeX. Il est à préciser que la syntaxe complète de \LaTeX\ contient des éléments qui structure un document tout entier. Sous R Markdown, on peut très bien se passer de cette partie mais pour vous donner une idée, voici un exemple :
+
+```
+\documentclass{article}
+
+\begin{document}
+Hello world!
+\end{document}
+```
+Maintenant, passons à deux concepts clés : environnement et commande.
+
+### 1.1.1 Environnement
+
+Un environnement \LaTeX\ est un espace de travail dans lequel nous pouvons procéder à l'écriture des contenus mathématiques. L'environnement le plus souvent utilisé est `equation` (auquel nous reviendrons plus tard). Un environnement pourrait (**et devrait!**) être ouvert et fermé avec les commandes `\begin{}` et `\end{}`.
+
+```
+\begin{equation}
+...
+\end{equation}
+```
+
+
+La différence entre les environnements repose sur la typographie. Les équations situées dans un environnement sont automatiquement numérotées. Pour désactiver la numérotation, on pourra utiliser la version "étoilée" telle que `equation*`.
+
+### 1.1.2 Commande
+
+De manière générale, les commandes appartiennent à un environnement spécifique. Cependant, certaines commandes comme `\label{}` ou bien `\ref{}` sont endogènes à \LaTeX\ et peuvent donc être appelées dans tous les environnements. Voici un cas d'usage dans l'environnement `equation`.
+
+```
+\begin{equation}
+\label{S}
+S=\pi r^2
+\end{equation}
+```
+ce qui produit :
+
+\begin{equation}
+\label{S}
+S=\pi r^2
+\end{equation}
+
+Plus loin dans le texte, on pourra donc citer la formule \ref{S} en tapant `\ref{S}`:
+```
+(...) la formule \ref{S} (...)
+```
+(...) la formule \ref{S} (...)
+
+La numérotation sera modifiée automatiquement lorsque l'emplacement de l'équation en question est changé.
+
+### 1.1.3 Quelques particularités
+
+**Commentaire** : Les commentaires dans \LaTeX\ sont marqués par le signe `%`. Ainsi, les codes ci-dessous
+
+  ```
+  \begin{equation*}
+  \label{aireS} % cette partie ne sera pas intérprétée
+  S=\pi r^2
+  \end{equation*}
+  ```
+  
+  produisent le résultat suivant :
+  
+  \begin{equation*}
+  \label{aireS} % cette partie ne sera pas intérprétée
+  S=\pi r^2
+  \end{equation*}
+
+**Espace** : \LaTeX\ ne prend pas en compte ni espace ni tabulation. Ainsi dans l'exemple suivant :
+  
+  ```
+  \begin{equation*}
+  S       =       \pi % On peut mettre autant d'espace qu'on veut...
+  r^2 % ...ou même sauter à la ligne
+  \end{equation*}
+  ```
+  Le résultat restera le même :
+  
+  \begin{equation*}
+  S       =       \pi       r^2 % on peut mettre autant d'espace qu'on veut
+  \end{equation*}
+  
+**Caractères fonctionnels** : \LaTeX\ considère que les caractères suivants sont par défaut le début d'une commande à exécuter : `# $ % ^ & _ { } ~ \`. Ainsi, pour les écrire sans erreur, il faut impérativement mettre un _backslash_ (`\`). Par exemple, pour que \LaTeX\ comprenne que le `%` signifie le pourcentage, il faut écrire `\%`.
+  
+## 1.2 Typographies mathématiques
+
+Il existe deux modes typographiques sous \LaTeX\ qui chacun détermine l'affichage du résultat de sortie.
+
+**Ordinary Math Mode** : le contenu mathématique commence par `\(` ou `$` et finit par `\)` ou `$` et est mélangé avec le texte. Exemple :
+  
+  ```
+  L’aire $S$ d’un disque de rayon $r$ est égale à : 
+  \(
+  S = \pi r^2
+  \)
+  ```
+  
+  ce qui donne :
+  
+  L’aire $S$ d’un disque de rayon $r$ est égale à : 
+  \(
+  S = \pi r^2
+  \)
+  
+**Display Math Mode** : le contenu mathématique est détaché du reste du texte ; cela commence par `\[` et se termine par `\]`. On peut considérer cette syntaxe comme une version abrégée de `\begin{equation}` et `\end{equation}`.
+
+  ```
+  L’aire $S$ d’un disque de rayon $r$ est égale à : \[S = \pi r^2\]
+  ```
+  
+  ce qui donne :
+  
+  L’aire $S$ d’un disque de rayon $r$ est égale à : \[S = \pi r^2\]
+  
+**N.B.** Certains manuels de \LaTeX\ utilisent `$$` pour remplacer `\[` et `\]`, une syntaxe primitive héritée de \TeX\ mais leur usage est déconseillé dans l'environnement R Markdown pour des raisons d'incompatibilité.
+  
+# 2. Symboles et caractères
+
+\LaTeX\ est capable de détecter les symboles mathématiques basiques comme les opérateurs binaires (`+`, `-`, `*`, `/`) et les relations (`=`, `<`, `>`) etc., il n'est d'ailleurs plus nécessaire de mettre un _backslash_ devant ces signes. Mais pour d'autres types de symboles, il faut connaître les codes correspondants.
+
+## 2.1 En apéritif...
+
+|**Types de symboles**|**Code**   | **Entrée**      | **Sortie**      |
+|---------------------|-----------|-----------------|-----------------|
+| Exposant            | `^`       | `a^{1}`         | $a^{1}$         |
+| Indice              | `_`       | `x_{1}`         | $x_{1}$         |
+| Fraction            | `\frac`   | `\frac{x}{y}`   | $\frac{x}{y}$   |
+| Racine carrée       | `\sqrt`   | `\sqrt[n]{x}`   | $\sqrt[n]{x}$   |
+|                     |           | `\sqrt{x}`      | $\sqrt{x}$      |
+| Somme               | `\sum`    | `\sum{k=1}^n`   | $\sum{k=1}^n$   |
+| Produit             | `\prod`   | `\prod{k=1}^n`  | $\prod{k=1}^n$  |
+
+## 2.2 Symboles mathématiques et lettres grecques
+
+|            	|            	|           	|           	|          	|          	|                   	|                   	|
+|------------	|------------	|-----------	|-----------	|----------	|----------	|-------------------	|-------------------	|
+| $\leq$     	| `\leq`     	| $\geq$    	| `\geq`    	| $\neq$   	| `\neq`   	| $\approx$         	| `\approx`         	|
+| $\times$   	| `\times`   	| $\div$    	| `\div`    	| $\pm$    	| `\pm`    	| $\cdot$           	| `\cdot`           	|
+| $^{\circ}$ 	| `^{\circ}` 	| $\circ$   	| `\circ`   	| $\prime$ 	| `\prime` 	| $\cdots$          	| `\cdots`          	|
+| $\infty$   	| `\infty`   	| $\neg$    	| `\neg`    	| $\wedge$ 	| `\wedge` 	| $\vee$            	| `\vee`            	|
+| $\supset$  	| `\supset`  	| $\forall$ 	| `\forall` 	| $\in$    	| `\in`    	| $\rightarrow$     	| `\rightarrow`     	|
+| $\subset$  	| `\subset`  	| $\exists$ 	| `\exists` 	| $\notin$ 	| `\notin` 	| $\Rightarrow$     	| `\Rightarrow`     	|
+| $\cup$     	| `\cup`     	| $\cap$    	| `\cap`    	| $\mid$   	| `\mid`   	| $\Leftrightarrow$ 	| `\Leftrightarrow` 	|
+| $\dot a$   	| `\dot a`   	| $\hat a$  	| `\hat a`  	| $\bar a$ 	| `\bar a` 	| $\tilde a$        	| `\tilde a`        	|
+| $\alpha$   	| `\alpha`   	| $\beta$   	| `\beta`   	| $\gamma$ 	| `\gamma` 	| $\delta$          	| `\delta`          	|
+| $\epsilon$ 	| `\epsilon` 	| $\zeta$   	| `\zeta`   	| $\eta$   	| `\eta`   	| $\varepsilon$     	| `\varepsilon`     	|
+| $\theta$   	| `\theta`   	| $\iota$   	| `\iota`   	| $\kappa$ 	| `\kappa` 	| $\vartheta$       	| `\vartheta`       	|
+| $\lambda$  	| `\lambda`  	| $\mu$     	| `\mu`     	| $\nu$    	| `\nu`    	| $\xi$             	| `\xi`             	|
+| $\pi$      	| `\pi`      	| $\rho$    	| `\rho`    	| $\sigma$ 	| `\sigma` 	| $\tau$            	| `\tau`            	|
+| $\upsilon$ 	| `\upsilon` 	| $\phi$    	| `\phi`    	| $\chi$   	| `\chi`   	| $\psi$            	| `\psi`            	|
+| $\omega$   	| `\omega`   	| $\Gamma$  	| `\Gamma`  	| $\Delta$ 	| `\Delta` 	| $\Theta$          	| `\Theta`          	|
+| $\Lambda$  	| `\Lambda`  	| $\Xi$     	| `\Xi`     	| $\Pi$    	| `\Pi`    	| $\Sigma$          	| `\Sigma`          	|
+| $\Upsilon$ 	| `\Upsilon` 	| $\Phi$    	| `\Phi`    	| $\Psi$   	| `\Psi`   	| $\Omega$          	| `\Omega`          	|
+
+## 2.3 Les délimiteurs
+`() [] \{\} \langle \rangle` : $()[]\{\}\langle\rangle$
+
+**N.B.** Pour ajuster la taille des délimiteurs, on peut utiliser `\left` et `\right` avec la syntaxe suivante:
+
+`\left<delim1> <formule> \right<delim2>`
+
+Lorsqu'on a besoin d'un seul délimiteur, on utilise "." juste après `\left` ou `\right`. Exemple :
+
+```
+\[
+  |x| = \left\{
+          \begin{array}{ll}
+            +x & \qquad \text{si}\quad x\geq 0 \\
+            -x & \qquad \text{sinon} \\
+          \end{array}
+        \right.
+\]
+```
+
+ce qui donne le résultat :
+\[
+  |x| = \left\{
+          \begin{array}{ll}
+            +x & \qquad \text{si}\quad x\geq 0 \\
+            -x & \qquad \text{sinon} \\
+          \end{array}
+        \right.
+\]
+
+
+## 2.4 Les fonctions
+
+Les fonctions prédéfinies sont: `\sin`, `\cos`, `\tan`, `\arcsin`, `\arccos`, `\arctan`, `\sinh`, `\cosh`, `\tanh`, `\cot`, `\log`, `\ln`, `\lim`, suivies de `(x)`. Pour d'autres fonctions non définies, il faut explorer les options supplémentaires du package `amsmath`.
+
+## 2.5 L'espacement
+* `\,`, espace fine
+* `\;`, espace moyenne
+* `\:`, espace large
+* `\ `, espace normale (intermot)
+* `\quad`, cadratin
+* `\qquad`, double cadratin
+
+Pour une liste exhaustive des symboles sous \LaTeX\ , vous pouvez consulter ce document qui fait l'objet d'une mise à jour régulière : <http://tug.ctan.org/info/symbols/comprehensive/symbols-a4.pdf>
+
+# 3. Environnements
+
+## 3.1 L'environnement `equation`
+
+L'environnement `equation` permet d'insérer une seule formule dans le texte.
+
+```
+\begin{equation}
+  S=\pi r^2
+\end{equation}
+```
+
+\begin{equation}
+  S=\pi r^2
+\end{equation}
+
+Notez bien que la formule est automatiquement numérotée, ce qui n'est pas le cas avec `\[` et `\]` ou `$$`.
+
+## 3.2 Les environnements `split` et `gather`
+
+Parfois on a besoin de séparer une longue formule en plusieurs étapes pour que ce soit plus lisible. Pour ce faire, nous allons créer l'environnement `split` à l'intérieur de l'environnement `equation`. Exemple :
+
+```
+\begin{equation*}
+\begin{split}
+  y & = (a+b)^2 \\
+    & = a^2 + b^2 + 2ab \\
+    & \geq 0 \,.
+\end{split}
+\end{equation*}
+```
+
+\begin{equation*}
+\begin{split}
+  y & = (a+b)^2 \\
+    & = a^2 + b^2 + 2ab \\
+    & \geq 0 \,.
+\end{split}
+\end{equation*}
+
+**N.B.** L'usage de `&` et de `\\` permet d'indiquer l'alignement et les sauts de lignes.
+
+Si on veut associer plusieurs formules sous-ajacentes, on peut utiliser l'environnement `gather` sans passer par `equation`. Exemple :
+
+```
+\begin{gather}
+  \sum_i{F_i} = \frac{d_v}{d_t} = 0 \\
+  F = M \* a                        \\
+  \sum{F_{A,B}} = \-\sum{F_{B,A}}
+\end{gather}
+```
+
+\begin{gather}
+  \sum_i{F_i} = \frac{d_v}{d_t} = 0 \\
+  F = M \* a                        \\
+  \sum{F_{A,B}} = \-\sum{F_{B,A}}
+\end{gather}
+
+
+## 3.3 L'environnement `align`
+
+Tout comme `split`, cet environnement permet de séparer les équations en plusieurs étapes mais en s'assurant qu'elles soient alignées. Mais contrairement à `split`, les équations dans `align` sont numérotés individuellement.
+
+```
+\begin{align}
+F(z) & = \sum^\infty_{n=0} f_n z^n \\
+& = z + \sum^\infty_{n=2}(f_{n-1}+f_{n-2}) z^n \\
+& = z + F(z)/z + F(z)/z^2 \\
+\nonumber
+& = z / (1 - z - z^2) \,.
+\end{align}
+```
+
+\begin{align}
+F(z) & = \sum^\infty_{n=0} f_n z^n \\
+& = z + \sum^\infty_{n=2}(f_{n-1}+f_{n-2}) z^n \\
+& = z + F(z)/z + F(z)/z^2 \\
+\nonumber
+& = z / (1 - z - z^2) \,.
+\end{align}
+
+**N.B.** La commande `\nonumber` met en pause la numérotation automatique.
+
+## 3.4 L'environnement `array` et les matrices
+
+Avec l'environnement `array`, on peut très bien écrire des matrices, mais il est obligatoire de le mettre entre `\left(` et `\right)`.
+
+```
+\[
+\left(
+\begin{array}{ccc}
+     x & y & z
+  \\ \alpha & \beta & \gamma
+\end{array}
+\right)
+\]
+```
+\[
+\left(
+\begin{array}{ccc}
+     x & y & z
+  \\ \alpha & \beta & \gamma
+\end{array}
+\right)
+\]
+
+_N.B._ La commande `{ccc}` après `\begin{array}` sert à aligner les colonnes. On utilise les lettres `l`, `c` et `r` pour indiquer _gauche_, _centré_ et _droite_. Par ailleurs, les démiliteurs par défaut sont les parenthèses. Pour changer les signes de délimiteur, il faudrait rajouter les commandes supplémentaires après `\left(` et `\right)`, telles que `\lvert` et `\rvert` pour les barres verticales, ce qui est peu commode.
+
+Ainsi on pourrait également utiliser les 6 commandes de matrice dans le pakcage `asmmath` (déjà intégré) permettant d'écrire des matrices avec des délimiteurs différents.
+
+* `pamtrix` crée des parenthèses : $\begin{pmatrix} 1 &2 &3 \end{pmatrix}$
+* `bmatrix` crée des crochets : $\begin{bmatrix} 1 &2 &3 \end{bmatrix}$
+* `Bmatrix` crée des accolades : $\begin{Bmatrix} 1 &2 &3 \end{Bmatrix}$
+* `vmatrix` crée des barres verticales : $\begin{vmatrix} 1 &2 &3 \end{vmatrix}$
+* `Vmatrix` crée des doubles barres verticales : $\begin{Vmatrix} 1 &2 &3 \end{Vmatrix}$
+
+Voici un exemple avec `bmatrix`:
+
+```
+\[
+\begin{bmatrix}
+  2 & 1
+\\0 & 1
+\end{bmatrix}
+\begin{bmatrix}
+  x \\
+  y
+\end{bmatrix}
+\]
+```
+
+\[
+\begin{bmatrix}
+  2 & 1
+\\0 & 1
+\end{bmatrix}
+\begin{bmatrix}
+  x \\
+  y
+\end{bmatrix}
+\]
+
+# 4. Insertion et manipulation des graphiques
+
+Il existe sous \LaTeX\ des packagges ou extensions pour pouvoir travailler sur des éléments graphiques comme des images ou des dessins. Pour ce faire, il faut introduire le package `graphicx` (déjà installé).
+
+Pour commencer, on utilise la commande `includegraphics[options]{nom du fichier}`. Il est par ailleurs d'omettre l'extension du fichier (ici .jpg en l'occurrence). Dans la partie `[options]`, on a la possibilité d'ajuster la taille de l'image par exemple.
+
+Cependant, la commande `includegraphics` ne s'accompagne d'aucune mise en page. Par conséquent, nous pouvons utiliser l'environnement `figure` qui assure une bonne représentation de l'image dans le texte.
+
+Ainsi, avec la commande suivante :
+
+```
+\begin{figure}
+  \centering \includegraphics[angle=0,scale=0.25]{donald.png}
+  \caption{"Donald Duck"}
+  \label{duck}
+\end{figure}
+```
+On obtient le résultat suivant :
+
+\begin{figure}
+  \centering \includegraphics[angle=0,scale=0.25]{donald.png}
+  \caption{"Donald Duck"}
+  \label{duck}
+\end{figure}
+
+On voit que la figure est automatiquement numérotée avec la commande `\caption`, comme dans l'exemple des équations montré plus haut.
+
+Il existe trois manières d’agir sur la taille d’un graphique.
+* scale=ratio, où ratio est un nombre positif ou négatif, permet
+de changer la taille globale de la figure ;
+* width=dimen permet d’imposer la largeur du graphique ;
+* height=dimen permet d’imposer la hauteur du graphique.
+
+Avec l'option `angle=ndegre` on peut réaliser également des rotations.
+
+```
+\begin{figure}
+  \centering \includegraphics[angle=180,scale=0.25]{donald.png}
+  \caption{"Donald Trump"}
+  \label{trump}
+\end{figure}
+```
+
+ce qui donne :
+
+\begin{figure}
+  \centering \includegraphics[angle=180,scale=0.25]{donald.png}
+  \caption{"Donald Trump"}
+  \label{trump}
+\end{figure}
