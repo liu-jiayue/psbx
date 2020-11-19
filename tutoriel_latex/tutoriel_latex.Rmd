@@ -1,21 +1,21 @@
 ---
 title: Guide pratique de \LaTeX\ sous R Markdown
-date: "16 novembre 2020"
-author: Jiayue LIU
+date: "20 novembre 2020"
+author: "Jiayue LIU"
 header-includes:
    - \usepackage{fancyhdr}
    - \pagestyle{fancy}
    - \fancyhead[L,R]{}
    - \fancyhead[CO,CE]{Paris School of Business}
-   - \fancypagestyle{plain}{\pagestyle{fancy}}
-   
+
    - \usepackage{titling}
    - \pretitle{\begin{center}
-     \includegraphics[width=3in]{img-r.jpg}\LARGE\\}
+               \includegraphics[width=4in]{logo_psb.png}\LARGE\\}
    - \posttitle{\end{center}}
 output:
   pdf_document:
     toc: true
+bibliography : latex.bib
 ---
 
 ```{r, include=FALSE}
@@ -25,7 +25,7 @@ options(tinytex.verbose = TRUE)
 \pagebreak
 # Introduction
 
-\LaTeX\ est un langage informatique dérivé de \TeX\ qui permet de composer et produire des documents, souvent scientifiques, contenant des contenus mathématiques (notamment des équations) mis en style. Dans l'environnement R Markdown, on peut écrire directement des commandes \LaTeX\ avec le package `TinyTeX` qui est déjà installé par défaut.
+\LaTeX\ est un langage informatique dérivé de \TeX\ qui permet de composer et produire des documents, souvent scientifiques, contenant des contenus mathématiques (notamment des équations) mis en style. Dans l'environnement R Markdown, on peut écrire directement des commandes \LaTeX\ avec le package `TinyTeX` qui est déjà installé par défaut [@Xie].
 
 L'usage de \LaTeX\ produit des contenus mathématiques de façon uniforme et structurée, comme par exemple celle-ci :
 
@@ -161,7 +161,7 @@ Il existe deux modes typographiques sous \LaTeX\ qui chacun détermine l'afficha
   
 # 2. Symboles et caractères
 
-\LaTeX\ est capable de détecter les symboles mathématiques basiques comme les opérateurs binaires (`+`, `-`, `*`, `/`) et les relations (`=`, `<`, `>`) etc., il n'est d'ailleurs plus nécessaire de mettre un _backslash_ devant ces signes. Mais pour d'autres types de symboles, il faut connaître les codes correspondants.
+\LaTeX\ est capable de détecter les symboles mathématiques basiques comme les opérateurs binaires (`+`, `-`, `*`, `/`) et les relations (`=`, `<`, `>`) etc., il n'est d'ailleurs plus nécessaire de mettre un _backslash_ devant ces signes. Mais pour d'autres types de symboles, il faut connaître les codes correspondants [@VanDongen].
 
 ## 2.1 En apéritif...
 
@@ -390,7 +390,7 @@ Il existe sous \LaTeX\ des packagges ou extensions pour pouvoir travailler sur d
 
 Pour commencer, on utilise la commande `includegraphics[options]{nom du fichier}`. Il est par ailleurs d'omettre l'extension du fichier (ici .jpg en l'occurrence). Dans la partie `[options]`, on a la possibilité d'ajuster la taille de l'image par exemple.
 
-Cependant, la commande `includegraphics` ne s'accompagne d'aucune mise en page. Par conséquent, nous pouvons utiliser l'environnement `figure` qui assure une bonne représentation de l'image dans le texte.
+Cependant, la commande `includegraphics` ne s'accompagne d'aucune mise en page. Par conséquent, nous pouvons utiliser l'environnement `figure` qui assure une bonne représentation de l'image dans le texte [@Lozano].
 
 Ainsi, avec la commande suivante :
 
@@ -421,7 +421,8 @@ Avec l'option `angle=ndegre` on peut réaliser également des rotations.
 
 ```
 \begin{figure}
-  \centering \includegraphics[angle=180,scale=0.25]{donald.png}
+  \centering
+  \includegraphics[angle=180,scale=0.25]{donald.png}
   \caption{"Donald Trump"}
   \label{trump}
 \end{figure}
@@ -430,7 +431,11 @@ Avec l'option `angle=ndegre` on peut réaliser également des rotations.
 ce qui donne :
 
 \begin{figure}
-  \centering \includegraphics[angle=180,scale=0.25]{donald.png}
+  \centering
+  \includegraphics[angle=180,scale=0.25]{donald.png}
   \caption{"Donald Trump"}
   \label{trump}
 \end{figure}
+
+\pagebreak
+# Bibliographie
