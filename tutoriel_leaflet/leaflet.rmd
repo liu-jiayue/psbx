@@ -7,6 +7,7 @@ output:
   html_document:
     df_print: paged
   pdf_document: default
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +20,7 @@ Le document présent vise à présenter les différentes fonctions du package `l
 
 # 1. Créer votre première carte
 
-## 1.1 Les préliminaires
+## 1.1 Généralités
 
 **ÉTAPE 1 :** D'abord, on importe la librairie avec la commande `library(leaflet)` dans R.
 
@@ -77,32 +78,33 @@ addProviderTiles(provider = "Esri")
 leaflet(width = "100%", height = 200) %>%
   addProviderTiles(provider = "Esri")
 ```
+Notez qu'à la place de `provider = ""`, on peut également ne mettre que le nom du fonds de carte.
 
-On a la possibilité d'importer des fonds de carte à partir des URL qui se trouvent ailleurs sur Internet :
+On a la possibilité d'importer des fonds de carte à partir des URL qui se trouvent ailleurs sur Internet, notamment des WMS (_Web Map Service_) qui sont mis à disposition par les utilisateurs des systèmes d'information géographique (dont beaucoup ne sont pas en licence libre et sont réservés à un usage payant). On peut quand même trouver des services gratuits selon les types d'information qu'on recherche.
+
+Une fois qu'on obtient le WMS qu'on souhaite intégrer, on utilise la commande `addWMSTiles` pour appeler les données stockées dans le lien URL. Dans l'exemple suivant, on importera une couche qui cartographie les zones inondées par la crue de la Seine en 1910.
 
 ```{r, echo = TRUE}
-leaflet(width = "100%", height = 200) %>% 
+leaflet(width = "100%", height = 300) %>% 
   addTiles() %>%
-  setView(-93.65, 42.0285, zoom = 4) %>%
-  addWMSTiles(
-    "http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi",
-    layers = "nexrad-n0r-900913",
-    options = WMSTileOptions(format = "image/png", transparent = TRUE),
-    attribution = "Weather data © 2012 IEM Nexrad"
-  )
+  addWMSTiles("https://geowebservices.stanford.edu/geoserver/ows?SERVICE=WMS&",
+    layers = "druid:bd357wk9212",
+    options = WMSTileOptions(format = "image/png",
+                             transparent = TRUE,
+                             attribution = "Standford University")) %>%
+  setView(lng = 2.35222, lat = 48.85661, zoom = 12)
 ```
 
 Nous pouvons également de combiner plusieurs fonds de carte pour avoir plus d'informations :
 
 ```{r, echo = TRUE}
 leaflet(width = "100%", height = 200) %>%
-  addProviderTiles(providers$MtbMap) %>%
-  addProviderTiles(providers$Stamen.TonerLines,
-    options = providerTileOptions(opacity = 0.35)) %>%
-  addProviderTiles(providers$Stamen.TonerLabels)
+  addProviderTiles("CartoDB.DarkMatter") %>%
+  addProviderTiles("OpenRailwayMap") %>%
+  setView(lng = 2.35222, lat = 48.85661, zoom = 10)
 ```
 
-Malgré la multitude des fonds de carte disponibles, il est recommandé de travailler sur des fonds monocolores, ce qui facilitera la visualisation données qu'on souhaite exposer par la suite. Ainsi, nous allons principalement utiliser le fonds de carte "CartoDB" dans les parties suivantes de notre document.
+Malgré la multitude des fonds de carte disponibles, il est recommandé de travailler sur des fonds monocolores, ce qui facilitera la visualisation données qu'on souhaite exposer par la suite. Ainsi, nous allons principalement utiliser le fonds de carte "CartoDB" et ses variations dans les parties suivantes de notre document.
 
 ## 1.3 Ajuster la taille du widget
 
@@ -182,9 +184,7 @@ Les _layers_ les plus souvent utilisés sont les _markers_ et les _popups_ qui c
 
 Quand il n'y a qu'un seul point d'intérêt à afficher, on peut utiliser la fonction `addMarkers` 
 
-L'approche la plus courante est d'utiliser un dataframe ou la version plus adaptée : `tibble`.
-
-On va donc stocker les informations liées à des lieux dans un dataframe `tibble` composé de vecteurs. Dans l'exemple suivant, on va créer un premier dataframe avec les salles de cinéma parisiens.
+L'approche la plus courante est d'utiliser un dataframe classique ou un `tibble`, dans lequel on va donc stocker les informations liées à des lieux. Dans l'exemple suivant, on va créer un premier dataframe avec deux salles de cinéma parisiens : UGC Cité Les Halles et MK2 Bibliothèque.
 
 ```{r}
 library(tibble)
@@ -239,6 +239,7 @@ paris_cine %>%
   setView(lng=2.35222, lat = 48.85661, zoom = 11) %>%
   addMarkers(popup = paris_cine$cine)
 ```
+Alternativement, on peut également utiliser l'argument `label` dans `addMarkers`, ce qui fera apparaître les informations sans que l'utilisateurs ait besoin de cliquer sur les points d'intérêt.
 
 Exemple avec `addPopups` : les informations s'affichent directement sans marqueurs.
 
@@ -290,14 +291,159 @@ On précise les données qu'on utilise avec les arguments à l'intérieur de la 
 library(dplyr)
 library(sf)
 
-arr_paris <- read_sf("arrondissements.shp")
+data_arr <- read_sf("contours-geographiques-des-communes-et-arrondissements-municipaux-2019.shp")
 
 leaflet(width = "100%", height = 300) %>%
   addProviderTiles("CartoDB") %>%
   addPolygons(
-    data = arr_paris$geometry,
-    label = arr_paris$l_ar,
-    fill = FALSE)
+    data = data_arr$geometry,
+    label = data_arr$nom_com,
+    fill = TRUE,
+    stroke = TRUE,
+    color = "red",
+    weight = 2)
+```
+
+# 5. Couleurs et légendes
+
+Les couleurs peuvent parfois complémenter des informations manquantes sur la carte. On reprend la carte des arrondissements de Paris mais cette fois-ci on va colorer les polygones en fonction de leur nombre d'habitants. À cet effet, nous avons besoin de créer un objet "palette" pour pouvoir relier les différentes couleurs aux valeurs numériques (en l'occurrence, le nombre d'habitants). L'une des fonctions les plus utilisées est `colorNumeric()` (Voir <https://rstudio.github.io/leaflet/colors.html> pour d'autres fonctions).
+
+L'argument `palette=` permet de choisir une palette pré-configurée, tandis que `domain` va joindre les valeurs numériques injectées aux couleurs dans la palette. Ensuite, on va mettre l'objet `pal` comme un argument dans `addPolygons`.
+
+Enfin, pour faciliter la lecture, on peut également ajouter une commande `addLegend` pour indiquer ce que représentent les différentes couleurs.
+
+```{r}
+pal <- colorNumeric(
+  palette = "Reds",
+  domain = data_arr$population
+)
+
+leaflet(width = "100%", height = 500) %>%
+  addProviderTiles("CartoDB") %>%
+  addPolygons(
+    data = data_arr$geometry,
+    label = paste("Nbr d'habitants:", data_arr$population),
+    stroke = FALSE,
+    fill = TRUE,
+    fillColor = pal(data_arr$population),
+    fillOpacity = 1) %>%
+  addLegend(
+    "topleft", pal = pal, values = data_arr$population,
+    title = "Population de Paris par arrondissement",
+    labFormat = labelFormat(suffix = " habitants"),
+    opacity = 1)
+  
 ```
 
 
+# ***Cas pratique : cartographier les salles de cinéma à Paris***
+
+Maintenant qu'on a des pré-requis, passons à un cas pratique qui consiste à cartographier les salles de cinémas à Paris. Le travail est divisé en plusieurs étapes :
+- Créer une carte de Paris ;
+- Marquer les cinémas sur cette carte et afficher leur nom, adresse, nombre d'écrans et de sièges;
+- Utiliser des icônes différentes pour marquer les cinémas commerciaux et les cinémas d'art et essai (avec des légendes pour faciliter la compréhension);
+- Colorer des arrondissements en fonction du nombre de cinémas.
+
+Outre la base de données qu'on a déjà utilisée pour les contours des arrondissements, nous allons introduire la base de données des établissements cinématographiques diffusée par le Centre national du cinéma et de l'image animée (CNC).
+
+```{r}
+library(leaflet)
+library(dplyr)
+
+# Importer la base de données CNC
+data_cine <- read.csv("data_cnc.csv", sep = ";")
+data_cine$insee_com <- as.character(data_cine$insee_com)
+
+# Joindre les deux BDD et calculer le nombre de cinéma par arrondissement
+cine_arr <- data_arr %>%
+  left_join(data_cine, by = "insee_com") %>%
+  group_by(nom_com) %>%
+  summarise(num_cine_arr=sum(!is.na(name)))
+
+# Créer deux icônes différentes
+icons <- icons(
+  iconUrl = ifelse(data_cine$art == "OUI",
+    "https://www.flaticon.com/svg/static/icons/svg/2411/2411349.svg",
+    "https://www.flaticon.com/svg/static/icons/svg/2411/2411395.svg"),
+  iconWidth = 20, iconHeight = 20,
+  iconAnchorX = 0, iconAnchorY = 0)
+
+# Structurer les informations sur les cinémas
+info_cine <- paste(data_cine$name, "<br/>",
+                   data_cine$address,"<br/>",
+                   "Nbr d'écrans :", data_cine$num_screens,"<br/>",
+                   "Nbr de sièges :", data_cine$num_seats,"<br/>",
+                   ifelse(
+                     data_cine$art == "OUI","CINÉMA D'ART ET D'ESSAI",""),
+                   "<br/>",
+                   ifelse(
+                     data_cine$screen_3d == "OUI","CINÉMA 3D DISPONIBLE",""),
+                   "<br/>")
+
+
+# Structurer les informations sur les arrondissements
+info_arr <- paste(cine_arr$num_cine_arr,
+                  "cinemas recensé(s) en 2019 dans",
+                  cine_arr$nom_com)
+
+# Créer une palette pour les arrondissements
+library(RColorBrewer)
+pal <- colorNumeric(
+  palette = "Greens",
+  domain = cine_arr$num_cine_arr)
+
+# Créer une carte avec une vue centrée sur Paris
+leaflet(options = leafletOptions(dragging = TRUE,
+                                 minZoom = 11,
+                                 maxZoom = 18),
+        width = "100%",
+        height = 500) %>%
+  addProviderTiles("CartoDB.DarkMatter") %>%
+  setView(lng=2.35222, lat = 48.85661, zoom = 11) %>%
+  addPolygons(data = cine_arr$geometry,
+              stroke = TRUE,
+              color = "green",
+              weight = 2,
+              label = info_arr,
+              fill = TRUE,
+              fillColor = pal(cine_arr$num_cine_arr),
+              fillOpacity = 0.6,
+              highlightOptions = highlightOptions(color = "red",
+                                                  weight = 2)) %>%
+  addMarkers(lng = data_cine$lon,
+             lat = data_cine$lat,
+             icon = icons,
+             popup = info_cine)
+  
+```
+
+# Intégration avec `shiny`
+
+Il est d'ailleurs possible de combiner l'usage de `leaflet` avec l'autre package important dans R, à savoir `shiny`. En voici un exemple qui permet à l'utilisateur de choisir aléatoirement un cinéma sur la carte.
+
+```{r}
+library(shiny)
+library(leaflet)
+ui <- fluidPage(
+  h3("Choisir un cinéma aléatoire"),
+  actionButton("run", "Trouves-moi un cinoche!"),
+  leafletOutput("show")
+)
+server <- function(input, output) {
+  output$show <- renderLeaflet({
+    input$run
+    isolate({
+      rand_cine <- sample_n(data_cine, 1)
+      leaflet(options = leafletOptions(dragging = TRUE,
+                                       minZoom = 11,
+                                       maxZoom = 18),
+              width = "100%",
+              height = 500) %>%
+        addProviderTiles("CartoDB.DarkMatter") %>%
+        setView(lng=2.35222, lat = 48.85661, zoom = 11) %>%
+        addPopups(data = rand_cine, lng = ~lon, lat = ~lat, popup = ~name)
+    })
+  })
+}
+shinyApp(ui, server)
+```
