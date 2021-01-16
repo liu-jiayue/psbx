@@ -1,0 +1,468 @@
+---
+title: "Explorer les modèles spatio-temporels avec R-INLA"
+author: "Jiayue Liu"
+date: "16 Janvier 2021"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    toc: yes
+bibliography: inla.bib
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyhead[L,R]{}
+- \fancyhead[CO,CE]{Paris School of Business}
+- \usepackage{titling}
+- \pretitle{\begin{center} \includegraphics[width=3in]{psb.png}\LARGE\\}
+- \posttitle{\end{center}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tinytex)
+```
+
+# Introduction
+
+Ce rapport vise à explorer les modèles spatio-temporels, utiles dans un bon nombre
+de domaines d'études (santé publique, écologie etc.), sous un angle mathématique.
+Plus précisément, nous allons étudier la méthode INLA (_integrated nested Laplace 
+approximation_) ainsi que son application dans l'environnement R. Enfin, nous
+livrons un cas d'études à l'aide des packages `leaflet` et `shiny` pour produire des résultats sur une carte interactive.
+
+Le modèle qui fait l'objet de notre étude a été réalisé par Pr. Paula Moraga dans
+son ouvrage _Geospatial Health Data : Modeling and Visualization with R-INLA and
+Shiny_.
+
+# I. Fondements mathématiques
+
+## 1. La probabilité bayésienne
+
+Avant de se plonger dans l'univers de l'INLA, il convient d'abord de connaître 
+la philosophie bayésienne et ses implications dans notre travail de modélisation.
+
+En effet le concept de l'inférence bayésienne est fondamentale. Elle stipule qu'
+à partir des évènements connus (issus des observations sur le monde réel), on peut 
+calculer la probabilité des différentes causes hypothétiques. À la différence de 
+la probabilité classique (_Frequentist probability_), la pensée bayésienne se base
+sur la tolérance de la subjectivité. Cette philosophie peut être illustrée avec 
+le théorème de Bayes qui peut s'écrire comme suit :
+
+\begin{equation*}
+p(B \mid A) = \frac {p(A \mid B) * p(B)} {p(A)}
+\end{equation*}
+
+La probabilité de la cause hypothétique $B$ étant donné que l'évènement $A$ est 
+survenu peut être obtenue à partir de la probabilité dite _a priori_ ($p(B)$), la 
+probabilité marginale de l'évènement $A$ ($p(A)$), ainsi que le résultat statistique 
+$p(A \mid B)$ (c'est à dire la probabilité de survenue de l'évènement $A$ étant donné 
+que l'hypothèse $B$ est vrai).
+
+Notez bien que la probabilité _a priori_ peut provenir de l'expérience ou de l'intuition,
+mais aussi des résultats des études précédentes. Quoi qu'il en soit, elle s'appuie 
+sur une croyance subjective de l'individu, tandis que la probabilité _a posteriori_ 
+($p(B \mid A)$) vient l'ajuster. [@Grant]
+
+Voyons à travers un exemple comment la méthode bayésienne permet d'ajuster certains 
+"a priori" de notre vision du monde. Nous savons qu'en France, 0,3% de la population 
+adulte est porteur du VIH. Supposons maintenant qu'avec un test sérologique, 95% 
+des porteurs ont un résultat positif, tandis que 98% des non-porteurs ont un résultat 
+négatif. La question est de savoir la probabilité qu'un adulte soit réellement 
+porteur du VIH lorsque son test sérologique est positif. [@Blangiardo]
+
+La raisonnement bayésien se déroule ainsi : que ce soit positif soit négatif, le
+résultat d'un test est un évènement connu, tandis que la cause (c'est-à-dire l'infection
+par le virus) est incertaine. En appliquant le théorème de Bayes, on peut dénommer
+le fait d'être infecté comme un évènement $B$, et celui de ne pas l'être comme un
+contre-évènement $B^C$. L'évènement $A$ signifierait le fait d'avoir un résultat positif.
+On sait en revanche que le taux d'infection chez la population adulte, c'est-à-dire 
+la probabilité _a priori_ $p(B)$ est de 0,003. Nous savons également que lorsqu'une 
+personne est porteur du virus, le taux de positivité est de 95% ($p(A \mid B) = 0,95$). 
+Par ailleurs, la probabilité marginale de l'évènement $p(A)$ est la somme des probabilités 
+d'être réellement infecté en tenant compte des différentes possibilités du résultat :
+$p(A) =  p(A \mid B) * p(B) + p(A \mid B^C) * p(B^C)$
+
+Ainsi, la fameuse probabilité _a posteriori_ peut se calculer avec l'équation suivante : 
+
+\begin{equation*}
+\begin{split}
+  p(B \mid A) &= \frac {p(A \mid B) * p(B)} {p(A)} \\
+              &= \frac {p(A \mid B) * p(B)} {p(A \mid B) * p(B) + p(A \mid B^C) * p(B^C)} \\
+              &= \frac {0,95 * 0,003} {0,95 * 0,003 + 0,02 * 0,997} = 0,125
+\end{split}
+\end{equation*}
+
+Nous pouvons donc conclure qu'en France, en vue des statistiques sur la propagation
+du sida et pour toute la population adulte confondue, lorsque le résultat d'un 
+test VIH est positif, la probabilité que la personne est réellement infectée est de 12,5%.
+
+## 2. Modélisation et inférence bayésienne
+
+Toute (ou presque toute) la difficulté d'appliquer la méthode bayésienne dans la modélisation statistique réside dans la capacité à calculer (ou estimer) les valeurs incertaines.
+Dans notre exemple du test VIH, il n'y a que 2 possibles résultats : positif ou négatif, 
+tandis que dans de nombreux phénomènes qui font l'objet des études statistiques, 
+les résultats peuvent s'avérer multiples voire infinis. En plus, ladite probabilité 
+_a priori_ n'est pas toujours une valeur fixe et connue comme c'est le cas pour le taux de 
+positivité d'un test sérologique. C'est pour toutes ces raisons - entre autres - 
+qu'il nous faut, pour ainsi dire, calculer les "probabilités des probabilités".
+
+On remplace maintenant les notations dans le théorème de Bayes par celles
+qui sont plus couramment utilisées dans l'inférence bayésienne :
+
+\begin{equation}
+  \pi(\theta \mid \textbf{y}) = 
+  \frac {\pi(\textbf{y} \mid \theta) \pi(\theta)}{\pi(\textbf{y})}
+\end{equation}
+
+**N.B.** $\pi$ remplace $p$ car on n'est plus dans la logique d'une probabilité 
+fixée, mais bel et bien dans celle d'une "loi de distribution".
+$\pi(\theta \mid \textbf{y})$ est ainsi appelé la "loi _a posteriori_ conjointe"
+(_joint posterior distribution_).
+$\pi(\theta)$ est quant à lui la loi des paramètres $\theta$, lequel prend sa valeur dans un espace $\Theta$, étant donnée les 
+observations $\textbf{y}$. Par construction, $\pi(\textbf{y} \mid \theta)$ est la vraisemblance
+(_likelihood_ en anglais) des données observées $\textbf{y}$ étant donné les paramètres
+$\theta$. Enfin, $\pi(\textbf{y})$ est la vraisemblance marginale des données.[@Blangiardo]
+
+Ce dernier variable est particulièrement épineux, car souvent il faut avoir recours au calcul intégral :
+
+\begin{equation}
+\label{int}
+  \pi(\textbf{y}) = \int_{\theta \in \Theta} 
+           \pi(\textbf{y} \mid \theta) \pi(\theta) d \theta
+\end{equation}
+
+C'est la raison pour laquelle le théorème de Bayes s'exprime souvent comme suit :
+
+\begin{equation}
+  \pi(\theta \mid \textbf{y}) \propto \pi(\textbf{y} \mid \theta) \pi(\theta)
+\end{equation}
+
+Autrement dit, la loi _a posteriori_ conjointe est proportionnelle au
+produit de la vraisemblance $\pi(\textbf{y} \mid \theta)$ et la loi _a priori_
+$\pi(\theta)$.
+
+### Loi _a priori_ conjuguée
+
+Dans certains cas, la forme fonctionnelle de la loi _a priori_ pourrait
+coïncider avec celle de la vraisemblance. Par exemple, si la vraisemblance est une loi gaussienne avec une précision connue, la loi _a priori_ 
+conjuguée à la moyenne est elle aussi une loi gaussienne. Cela veut dire
+que la loi _a posteriori_ de la moyenne est également une loi 
+gaussienne. D'autres modèles dits "conjugués" sont le modèle bêta-binomial, le modèle 
+Poisson-Gamma etc. Toutefois, la plupart des modélisations sur les
+phénomènes du monde réel n'ont pas de loi _a priori_ sous forme conjugée --  il faudrait donc
+confronter le problème de calcul intégral évoqué plus haut autrement.
+
+### Méthodes de calcul approximatif et INLA
+
+En général, quand il ne s'agit pas d'un modèle conjugué, il conviendrait d'appliquer
+d'autres méthodes qui visent à simuler les valeurs de la distribution _a posteriori_,
+telles que Monte Carlo (MC) ou sa dérivée Markov chain Monte Carlo (MCMC).
+Les simulations statistiques génèrent des valeurs aléatoires à partir d'une fonction 
+de densité donnée par un ordinateur et peuvent devenir une procédure chronophage et coûteuse
+en termes de calcul lorsque les loi de distribution concernées sont complexes ou que
+la quantité de données est importante.
+
+Par conséquent, une autre approche alternative est aujourd'hui fréquemment utilisée
+dans la modélisation statistique, en particulier pour les modèles ayant des lois 
+de distribution gaussiennes latentes : INLA, ou _integrated nested Laplace 
+approximation_.
+
+A la différence des méthodes MC ou MCMC qui cherchent l'approximation par simulation,
+l'INLA adopte une approche plutôt analytique dans sa philosophie : l'approximation
+Laplace.
+
+Pour plus de détails sur les lois gaussiennes latentes ainsi que la méthode de l'approximation Laplace, vous pouvez consulter l'ouvrage de Marta BLANGIARDO & Michela CAMELETTI [@Blangiardo].
+
+# II. Modèles spatiaux et spatio-temporels avec R-INLA
+
+Dans cette partie, nous allons découvrir comment construire un modèle
+spatio-temporel avec le package `R-INLA`. Cet exercice consiste à évaluer
+l'évolution des risques du cancer de poumon dans l'État d'Ohio aux Etats-Unis.
+**Le jeu de données, les étapes de modélisation, ainsi que le package `SpatialEpiApp`
+sont issus de l'ouvrage de Pr. Paula Moraga.** [@Moraga]
+
+Attention, le package `R-INLA` n'est pas déposé sûr CRAN, il faut donc l'installer
+manuellement avec les codes suivants : 
+
+```
+install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+
+```
+
+## 1. Importation et préparation des données
+
+On importe les données sous forme `csv` via les lignes de commandes suivantes : 
+
+```{r, echo = TRUE}
+library(SpatialEpiApp)
+namecsv <- "SpatialEpiApp/Data/Ohio/dataohiocomplete.csv" 
+dohio <- read.csv(system.file(namecsv, package = "SpatialEpiApp"))
+head(dohio)
+```
+
+Ensuite, afin de pouvoir traiter la cartographie, on a également besoin d'un fichier
+shapefile également contenu dans le package `SpatialEpiApp`.
+
+```{r, echo = TRUE}
+library(rgdal)
+library(sf)
+
+nameshp <- system.file("SpatialEpiApp/data/Ohio/fe_2007_39_county/fe_2007_39_county.shp",
+                       package = "SpatialEpiApp")
+map <- readOGR(nameshp, verbose = FALSE)
+
+plot(map)
+```
+
+Le jeu de contient contient des information sur le nombre de cas de cancer de poumon,
+la population locale catégorisée par le sexe et le groupe racial pour chaque commune (county)
+dans l'Etat d'Ohio entre 1968 et 1988. Pour modéliser les risques non observables liés à la géographique et au temps (ainsi on parle du champs gaussien latent), on devrait d'abord
+calculer et structurer les variables suivants :
+
+* `county` : numéro d'identification des communes ;
+* `year` : année ;
+* `Y` : nombres de cas de cancer de poumon observés par commune par an ; 
+* `E` : nombres de cas de cancer de poumon modélisés par commune par an ; 
+* `SIR` : le SIR (taux d'incidence standardisé, ou _Standardized Incident Rate_) par commune par an.
+
+Pour le variable `Y`, il faut agréger les données brutes avec la fonction `aggregate()`.
+
+```{r, echo = TRUE}
+d <- aggregate(
+  x = dohio$y,
+  by = list(county = dohio$NAME, year = dohio$year),
+  FUN = sum
+)
+names(d) <- c("county", "year", "Y")
+head(d)
+```
+
+Pour le variable `E`, on peut faire appel au package `SpatialEpi` qui permet d'obtenir
+facilement les valeurs attendues. Mais avant de procéder à cette étape, il nous faut
+classer les données par commune par an, puis par sexe et groupe racial.
+
+```{r, echo = TRUE}
+dohio <- dohio[order(
+  dohio$county,
+  dohio$year,
+  dohio$gender,
+  dohio$race
+  ), ]
+dohio[1:20, ]
+```
+
+Puisque la population est catégorisée par deux dimensions (sexe et groupe racial)
+qui sont elles-mêmes bidimensionnelles, nous spécifions que `n.strata = 4`. Ainsi, 
+pour calculer la valeur attendue d'un échantillon vis-à-vis de la population, nous utilisons la fonction `expected()` :
+
+```{r}
+library(SpatialEpi)
+n.strata <- 4
+E <- expected(
+  population = dohio$n,
+  cases = dohio$y,
+  n.strata = n.strata
+)
+```
+
+Maintenant il faut stocker les valeur attendues dans une dataframe dénommée `dE`,
+avec trois colonnes : `county`, `year`, et `E`. Ensuite, on fusionne les deux
+dataframes `dE`et `d` pour obtenir une dataframe bien préparée. Dernièrement,
+on fait un simple calcul du SIR.
+
+```{r}
+#Obtenir le nombre d'années et le nombre de communes
+nyears <- length(unique(dohio$year))
+ncounties <- length(unique(dohio$NAME))
+#Répéter le processus d'estimation pour chaque année
+countiesE <- rep(unique(dohio$NAME),
+                 each = nyears)
+#Répéter le processus d'estimation pour chaque commune
+yearsE <- rep(unique(dohio$year),
+                 times = ncounties)
+#Stocker les valeurs E dans la dataframe
+dE <- data.frame(county = countiesE, year = yearsE, E = E)
+
+d <- merge(d, dE, by = c("county", "year"))
+
+d$SIR <- d$Y / d$E
+
+head(d)
+```
+En résumé, nous avons maintenant un tableau avec, pour chaque commune et chaque année,
+le nombre de cas de cancer de poumon observé (`Y`) et `E` représentant la valeur
+théorique dans le modèle construit. Le `SIR` qualifie si le nombre de cas de cancer
+dans la commune $i$ en l'an $j$ est plus élevé que la valeur théorique (\(\mathrm{SIR}_{ij} > 1\).
+
+La dernière étape de cette préparation des données consiste à fusionner les données géographiques avec la dataframe.
+
+```{r}
+library(tidyr)
+library(tidyverse)
+
+dw <- reshape(d,
+  timevar = "year",
+  idvar = "county",
+  direction = "wide"
+)
+map_sf <- st_as_sf(map)
+
+map_sf <- merge(
+  map_sf, dw,
+  by.x = "NAME",
+  by.y = "county"
+)
+
+map_sf <- gather(map_sf, year, SIR, paste0("SIR.", 1968:1988))
+map_sf$year <- as.integer(substring(map_sf$year, 5, 8))
+
+m <- map_sf %>% select(NAME, year, SIR, geometry)
+```
+
+## 2. Modélisation en R-INLA
+
+En utilisant le modèle Bernardinelli (celui-ci constituant justement nos connaissances _a priori_), nous allons maintenant estimer le risque relatif du cancer de poumon pour chaque commune et chaque année avec l'équation suivante :
+
+\begin{equation*}
+  Y_{ij} \sim Po(E_{ij}\theta_{ij}) \\
+  \log(\theta_{ij}) = \alpha + u_i + v_i + (\beta + \delta_i) * t_j.
+\end{equation*}
+
+où pour la commune $i$ en l'an $j$, $Y_{ij}$ est le nombre de cas de cancer observé 
+$E_{ij}$ est le nombre de cas de cancer théorique, et $\theta_{ij}$ représente donc
+le risque relatif (RR). Pour ce dernier, nous avons l'intersection qui est dénotée par $\alpha$, $(u_i + v_i)$ qui capte l'effet aléatoire d'une commune, $\beta$ qui est l'effet 
+de tendance linéaire, tandis que $\delta_i$ représente le décalage entre cette tendance générale et la tendance spécifique à une commune. Dernièrement, bien entendu, nous
+avons $t_j$ qui capte l'aspect temporel.
+
+### Matrice de voisinage
+
+L'effet aléatoire spatial est décrit par une matrice dite de voisinage (_Neighborhood Matrix_) dénommée `g` avec les fonctions `poly2nb` et `nb2INLA` dans le package `spdep`.
+Cette étape permet notamment de mesurer l'effet aléatoire entre les communes voisines
+puisque dans la modélisation spatiale, nous devrions prendre en compte la continuité de l'espace.
+
+```{r}
+library(INLA)
+library(spdep)
+nb <- poly2nb(map)
+
+head(nb)
+
+nb2INLA("map.adj", nb)
+g <- inla.read.graph(filename = "map.adj")
+```
+
+### Inférence avec R-INLA et interprétation des résultats
+
+Nous créons deux vecteurs pour stocker les indices des communes et du temps.
+
+```{r}
+d$idarea <- as.numeric(as.factor(d$county))
+d$idarea1 <- d$idarea
+d$idtime <- 1 + d$year - min(d$year)
+```
+
+La formule Bernardinelli citée plus haut peut s'écrire avec les lignes de commandes :
+
+```{r}
+formula <- Y ~ f(idarea, model = "bym", graph = g) +
+  f(idarea1, idtime, model = "iid") + idtime
+```
+
+où `f(idarea, model = "bym", graph = g)` correspond aux variables $u_i + v_i$,
+tandis que `f(idarea1, idtime, model = "iid")` dénote $\delta * t_j$ et `idtime`
+égale à $\beta*t_j$
+
+Enfin, on appelle la fonction `inla` pour calculer les lois _a posteriori_ sur
+les paramètres prédicateurs (`fitted.values`), dont la moyenne est le risque relatif.
+
+```{r}
+res <- inla(formula,
+            family = "poisson", data = d, E = E,
+            control.predictor = list(compute = TRUE))
+summary(res)
+head(res$summary.fitted.values)
+```
+
+Enfin, nous devons également fusionner les données issues de l'inférence et les données
+dites cartographiques dans `map_sf`.
+
+```{r}
+d$RR <- res$summary.fitted.values[, "mean"]
+d$LL <- res$summary.fitted.values[, "0.025quant"]
+d$UL <- res$summary.fitted.values[, "0.975quant"]
+
+m <- merge(
+  m, d,
+  by.x = c("NAME","year", "SIR"),
+  by.y = c("county", "year", "SIR")
+)
+```
+
+### Cartographier le risque relatif
+
+A l'aide des packages `leaflet` et `shiny`, nous allons maintenant visualiser ces résultats.
+
+```{r}
+library(leaflet)
+library(shiny)
+
+pal <- colorNumeric(palette = "YlOrRd", domain = m$RR)
+
+ui <- bootstrapPage(
+  tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
+  leafletOutput("map", width = "100%", height = "100%"),
+  absolutePanel(top = 10, right = 10,
+                style="z-index:500;",
+                tags$h3("Risque relatif du cancer de poumon"), 
+                sliderInput("periode", "Choisir l'année de mesure",
+                            min(m$year),
+                            max(m$year),
+                            value = m$year[1],
+                            step = 1,
+                            sep = "")
+                )
+)
+
+server <- function(input, output, session) {
+
+  # reactive filtering data from UI
+
+  reactive_data_chrono <- reactive({
+    m %>%
+      filter(year == input$periode)
+  })
+
+
+  # static backround map
+  output$map <- renderLeaflet(
+    leaflet(m) %>%
+      addTiles() %>%
+      setView(lng=-82.996216, lat = 40.367474, zoom = 7)
+  )  
+
+  # reactive circles map
+  observe({
+    leafletProxy("map", data = reactive_data_chrono()) %>%
+      addPolygons(
+        color = "grey", weight = 1, fillColor = ~ pal(RR),
+        fillOpacity = 0.5,
+        highlightOptions = highlightOptions(weight = 4)) %>%
+      addLegend(
+        position = "bottomleft",
+        pal = pal, values = ~RR, opacity = 0.5,
+        title = "Risque relatif",
+        layerId = "id"
+        )
+    })
+}
+
+shinyApp(ui, server)
+
+```
+Le résultat est à consulter sous forme d'une courte vidéo dans le dossier Github.
+
+# Bibliographie
+
